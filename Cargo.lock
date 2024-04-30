@@ -3474,12 +3474,12 @@ dependencies = [
 [[package]]
 name = "golem-wasm-rpc"
 version = "0.0.0"
-source = "git+https://github.com/golemcloud/wasm-rpc.git?branch=handle_async_for_unit#19996adb4ffc1561dde567b4a91b90667d5ba935"
+source = "git+https://github.com/golemcloud/wasm-rpc?branch=use_latest_wasm_ast#082b4df8e390034a237359ae98d2a51e6ce1e2fb"
 dependencies = [
  "arbitrary",
  "bigdecimal",
  "bincode 2.0.0-rc.3",
- "golem-wasm-ast 0.2.2",
+ "golem-wasm-ast 0.0.0",
  "prost 0.12.3",
  "prost-build 0.12.3",
  "serde",

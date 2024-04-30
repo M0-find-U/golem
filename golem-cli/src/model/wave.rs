@@ -2,7 +2,7 @@ use golem_client::model::{
     ExportFunction, ResourceMode, Type, TypeHandle, TypeRecord, TypeResult, TypeTuple, TypeVariant,
 };
 use golem_wasm_ast::analysis::{
-    AnalysedFunction, AnalysedFunctionParameter, AnalysedFunctionResult, AnalysedResourceId,
+    AnalysedFunction, AnalysedFunctionParameter, AnalysedFunctionResults, AnalysedResourceId,
     AnalysedResourceMode, AnalysedType,
 };
 
@@ -70,13 +70,14 @@ pub fn func_to_analysed(func: &ExportFunction) -> AnalysedFunction {
         results: func
             .results
             .iter()
-            .map(|r| AnalysedFunctionResult {
+            .map(|r| AnalysedFunctionResults {
                 name: r.name.clone(),
                 typ: type_to_analysed(&r.typ),
             })
             .collect(),
     }
 }
+
 
 pub fn type_to_analysed(typ: &Type) -> AnalysedType {
     fn variant_to_analysed(tv: &TypeVariant) -> AnalysedType {

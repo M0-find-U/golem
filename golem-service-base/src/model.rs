@@ -1203,8 +1203,8 @@ impl From<FunctionParameter> for golem_api_grpc::proto::golem::component::Functi
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Object)]
-pub struct FunctionResult {
-    pub name: Option<String>,
+pub struct NamedFunctionResult {
+    pub name: String,
     // TODO: Fix this in DB. Temp fix for now.
     #[serde(rename = "tpe")]
     pub typ: Type,
@@ -1272,7 +1272,13 @@ impl From<ExportInstance> for golem_api_grpc::proto::golem::component::ExportIns
 pub struct ExportFunction {
     pub name: String,
     pub parameters: Vec<FunctionParameter>,
-    pub results: Vec<FunctionResult>,
+    pub results: FunctionResults,
+}
+
+enum FunctionResults {
+    Named(Vec<NamedFunctionResult>),
+    Unnamed(Type),
+    Unit
 }
 
 impl TryFrom<golem_api_grpc::proto::golem::component::ExportFunction> for ExportFunction {
@@ -1568,12 +1574,14 @@ impl From<FunctionParameter> for golem_wasm_ast::analysis::AnalysedFunctionParam
     }
 }
 
-impl From<golem_wasm_ast::analysis::AnalysedFunctionResult> for FunctionResult {
-    fn from(value: golem_wasm_ast::analysis::AnalysedFunctionResult) -> Self {
-        Self {
-            name: value.name,
-            typ: value.typ.into(),
-        }
+impl From<golem_wasm_ast::analysis::AnalysedFunctionResults> for FunctionResults {
+    fn from(value: golem_wasm_ast::analysis::AnalysedFunctionResults) -> Self {
+
+        match value {
+            golem_wasm_ast::analysis::AnalysedFunctionResults::Named(named) => FunctionResults::Named(named.into_iter().map(|r| r.into()).collect()),
+            golem_wasm_ast::analysis::AnalysedFunctionResults::Unnamed(typ) => FunctionResults::Unnamed(typ.into()),
+            golem_wasm_ast::analysis::AnalysedFunctionResults::Unit => FunctionResults::Unit,
+        
     }
 }
 

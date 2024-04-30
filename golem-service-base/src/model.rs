@@ -1280,13 +1280,17 @@ pub struct ExportFunction {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Union)]
 #[oai(discriminator_name = "type", one_of = true)]
 pub enum FunctionResults {
-    Named(Vec<NamedFunctionResult>),
+    Named(NamedResults),
     Unnamed(Type),
     Unit(UnitRes)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Object)]
+pub struct NamedResults { pub value: Vec<NamedFunctionResult> }
+
+
 #[derive(Debug, Clone, PartialEq, Eq, Object)]
-struct UnitRes;
+pub struct UnitRes;
 
 impl<'de> Deserialize<'de> for UnitRes {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -1347,7 +1351,7 @@ impl From<FunctionResults> for golem_api_grpc::proto::golem::component::Function
             FunctionResults::Named(results) => golem_api_grpc::proto::golem::component::FunctionResults {
                 result: Some(golem_api_grpc::proto::golem::component::function_results::Result::NamedResult(
                     NamedFunctionResults {
-                        named_results: results.into_iter().map(|result| golem_api_grpc::proto::golem::component::NamedFunctionResult{
+                        named_results: results.value.into_iter().map(|result| golem_api_grpc::proto::golem::component::NamedFunctionResult{
                             name: result.name,
                             tpe: Some(result.typ.into())
 
@@ -1384,7 +1388,7 @@ impl TryFrom<golem_api_grpc::proto::golem::component::FunctionResults> for Funct
                             vec.push(named)
                         }
 
-                        vec
+                        NamedResults { value: vec }
                     }
                 ))
             }
@@ -1404,7 +1408,7 @@ impl From<FunctionResults> for golem_wasm_ast::analysis::AnalysedFunctionResults
     fn from(value: FunctionResults) -> Self {
         match value {
             FunctionResults::Named(results) => golem_wasm_ast::analysis::AnalysedFunctionResults::Named(
-                results.into_iter().map(|named_function_result| golem_wasm_ast::analysis::NamedFunctionResult::from(named_function_result)).collect::<Vec<_>>()
+                results.value.into_iter().map(|named_function_result| golem_wasm_ast::analysis::NamedFunctionResult::from(named_function_result)).collect::<Vec<_>>()
             ),
             FunctionResults::Unnamed(typ) => golem_wasm_ast::analysis::AnalysedFunctionResults::Unnamed(typ.into()),
             FunctionResults::Unit(_) => golem_wasm_ast::analysis::AnalysedFunctionResults::Unit
@@ -1686,7 +1690,7 @@ impl From<FunctionParameter> for golem_wasm_ast::analysis::AnalysedFunctionParam
 impl From<golem_wasm_ast::analysis::AnalysedFunctionResults> for FunctionResults {
     fn from(value: golem_wasm_ast::analysis::AnalysedFunctionResults) -> Self {
         match value {
-            golem_wasm_ast::analysis::AnalysedFunctionResults::Named(named) => FunctionResults::Named(named.into_iter().map(|r| r.into()).collect()),
+            golem_wasm_ast::analysis::AnalysedFunctionResults::Named(named) => FunctionResults::Named(NamedResults { value: named.into_iter().map(|r| r.into()).collect() }),
             golem_wasm_ast::analysis::AnalysedFunctionResults::Unnamed(typ) => FunctionResults::Unnamed(typ.into()),
             golem_wasm_ast::analysis::AnalysedFunctionResults::Unit=> FunctionResults::Unit(UnitRes),
         }

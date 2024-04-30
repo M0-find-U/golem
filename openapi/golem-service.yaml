@@ -3139,14 +3139,24 @@ components:
       discriminator:
         propertyName: type
         mapping:
-          Named: '#/components/schemas/FunctionResults_[NamedFunctionResult]'
+          Named: '#/components/schemas/FunctionResults_NamedResults'
           Unnamed: '#/components/schemas/FunctionResults_Type'
           Unit: '#/components/schemas/FunctionResults_UnitRes'
       type: object
       oneOf:
-      - $ref: '#/components/schemas/FunctionResults_[NamedFunctionResult]'
+      - $ref: '#/components/schemas/FunctionResults_NamedResults'
       - $ref: '#/components/schemas/FunctionResults_Type'
       - $ref: '#/components/schemas/FunctionResults_UnitRes'
+    FunctionResults_NamedResults:
+      allOf:
+      - type: object
+        properties:
+          type:
+            example: Named
+            type: string
+        required:
+        - type
+      - $ref: '#/components/schemas/NamedResults'
     FunctionResults_Type:
       allOf:
       - type: object
@@ -3167,18 +3177,6 @@ components:
         required:
         - type
       - $ref: '#/components/schemas/UnitRes'
-    FunctionResults_[NamedFunctionResult]:
-      allOf:
-      - type: object
-        properties:
-          type:
-            example: Named
-            type: string
-        required:
-        - type
-      - type: array
-        items:
-          $ref: '#/components/schemas/NamedFunctionResult'
     NameOptionTypePair:
       type: object
       properties:
@@ -3208,6 +3206,15 @@ components:
       required:
       - name
       - typ
+    NamedResults:
+      type: object
+      properties:
+        value:
+          type: array
+          items:
+            $ref: '#/components/schemas/NamedFunctionResult'
+      required:
+      - value
     ProducerField:
       type: object
       properties:

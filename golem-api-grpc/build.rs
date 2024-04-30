@@ -50,7 +50,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "proto/golem/component/export_function.proto",
                 "proto/golem/component/export_instance.proto",
                 "proto/golem/component/function_parameter.proto",
-                "proto/golem/component/function_result.proto",
+                "proto/golem/component/function_results.proto",
                 "proto/golem/component/component.proto",
                 "proto/golem/component/component_error.proto",
                 "proto/golem/component/component_id.proto",

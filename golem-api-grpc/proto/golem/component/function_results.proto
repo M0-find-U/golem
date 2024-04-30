@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package golem.component;
+
+import "wasm/rpc/type.proto";
+import "google/protobuf/empty.proto";
+
+message FunctionResults {
+  oneof result {
+    NamedFunctionResults named_result = 1;
+    wasm.rpc.Type unnamed_result = 2;
+    google.protobuf.Empty unit_result = 3;
+  }
+}
+
+message NamedFunctionResults {
+  repeated NamedFunctionResult named_results = 1;
+}
+
+
+message NamedFunctionResult {
+  string name = 1;
+  wasm.rpc.Type tpe = 2;
+}

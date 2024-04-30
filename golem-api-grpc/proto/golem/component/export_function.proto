@@ -3,10 +3,10 @@ syntax = "proto3";
 package golem.component;
 
 import "golem/component/function_parameter.proto";
-import "golem/component/function_result.proto";
+import "golem/component/function_results.proto";
 
 message ExportFunction {
   string name = 1;
   repeated FunctionParameter parameters = 2;
-  repeated FunctionResult results = 3;
+  FunctionResults results = 3;
 }

@@ -1210,11 +1210,11 @@ pub struct NamedFunctionResult {
     pub typ: Type,
 }
 
-impl TryFrom<golem_api_grpc::proto::golem::component::FunctionResult> for FunctionResult {
+impl TryFrom<golem_api_grpc::proto::golem::component::NamedFunctionResult> for NamedFunctionResult {
     type Error = String;
 
     fn try_from(
-        value: golem_api_grpc::proto::golem::component::FunctionResult,
+        value: golem_api_grpc::proto::golem::component::NamedFunctionResult,
     ) -> Result<Self, Self::Error> {
         Ok(Self {
             name: value.name,
@@ -1223,8 +1223,8 @@ impl TryFrom<golem_api_grpc::proto::golem::component::FunctionResult> for Functi
     }
 }
 
-impl From<FunctionResult> for golem_api_grpc::proto::golem::component::FunctionResult {
-    fn from(value: FunctionResult) -> Self {
+impl From<NamedFunctionResult> for golem_api_grpc::proto::golem::component::NamedFunctionResult {
+    fn from(value: NamedFunctionResult) -> Self {
         Self {
             name: value.name,
             tpe: Some(value.typ.into()),
@@ -1275,6 +1275,7 @@ pub struct ExportFunction {
     pub results: FunctionResults,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 enum FunctionResults {
     Named(Vec<NamedFunctionResult>),
     Unnamed(Type),
@@ -1300,6 +1301,37 @@ impl TryFrom<golem_api_grpc::proto::golem::component::ExportFunction> for Export
                 .map(|result| result.try_into())
                 .collect::<Result<_, _>>()?,
         })
+    }
+}
+
+impl From<FunctionResults> for golem_api_grpc::proto::golem::component::FunctionResults {
+    fn from(value: FunctionResults) -> Self {
+        match value {
+            FunctionResults::Named(results) => golem_api_grpc::proto::golem::component::FunctionResults {
+                result: Some(golem_api_grpc::proto::golem::component::function_results::Result::NamedResult(
+                    results.into_iter().map(|result| result.into()).collect()
+                ))
+            },
+            FunctionResults::Unnamed(typ) => golem_api_grpc::proto::golem::component::FunctionResults {
+                result: Some(golem_api_grpc::proto::golem::component::function_results::Result::UnnamedResult(typ.into()))
+            },
+            FunctionResults::Unit => golem_api_grpc::proto::golem::component::FunctionResults {
+                result: Some(golem_api_grpc::proto::golem::component::function_results::Result::UnitResult(()))
+            }
+        }
+    }
+
+}
+
+impl From<FunctionResults> for golem_wasm_ast::analysis::AnalysedFunctionResults {
+    fn from(value: FunctionResults) -> Self {
+        match value {
+            FunctionResults::Named(results) => golem_wasm_ast::analysis::AnalysedFunctionResults::Named(
+                results.into_iter().map(|result| result.into()).collect()
+            ),
+            FunctionResults::Unnamed(typ) => golem_wasm_ast::analysis::AnalysedFunctionResults::Unnamed(typ.into()),
+            FunctionResults::Unit => golem_wasm_ast::analysis::AnalysedFunctionResults::Unit
+        }
     }
 }
 
@@ -1576,17 +1608,16 @@ impl From<FunctionParameter> for golem_wasm_ast::analysis::AnalysedFunctionParam
 
 impl From<golem_wasm_ast::analysis::AnalysedFunctionResults> for FunctionResults {
     fn from(value: golem_wasm_ast::analysis::AnalysedFunctionResults) -> Self {
-
         match value {
             golem_wasm_ast::analysis::AnalysedFunctionResults::Named(named) => FunctionResults::Named(named.into_iter().map(|r| r.into()).collect()),
             golem_wasm_ast::analysis::AnalysedFunctionResults::Unnamed(typ) => FunctionResults::Unnamed(typ.into()),
             golem_wasm_ast::analysis::AnalysedFunctionResults::Unit => FunctionResults::Unit,
-        
+        }
     }
 }
 
-impl From<FunctionResult> for golem_wasm_ast::analysis::AnalysedFunctionResult {
-    fn from(value: FunctionResult) -> Self {
+impl From<NamedFunctionResult> for golem_wasm_ast::analysis::NamedFunctionResult {
+    fn from(value: NamedFunctionResult) -> Self {
         Self {
             name: value.name,
             typ: value.typ.into(),

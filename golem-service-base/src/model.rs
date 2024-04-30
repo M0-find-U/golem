@@ -27,6 +27,7 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashSet;
 use std::{collections::HashMap, fmt::Display, fmt::Formatter};
 use golem_api_grpc::proto::golem::component::NamedFunctionResults;
+use crate::model::FunctionResults::Unit;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Object)]
 pub struct WorkerCreationRequest {
@@ -1281,7 +1282,37 @@ pub struct ExportFunction {
 pub enum FunctionResults {
     Named(Vec<NamedFunctionResult>),
     Unnamed(Type),
-    Unit(String)
+    Unit(UnitRes)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Object)]
+struct UnitRes;
+
+impl<'de> Deserialize<'de> for UnitRes {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+    {
+        let value = serde_json::Value::deserialize(deserializer)?;
+
+        match value {
+            serde_json::Value::Object(map) if map.is_empty() => Ok(UnitRes),
+            serde_json::Value::Null => Ok(UnitRes),
+            _ => Err(serde::de::Error::custom("Expected empty object")),
+        }
+    }
+}
+
+impl Serialize for UnitRes {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+    {
+        serde_json::Value::serialize(
+            &serde_json::Value::Object(serde_json::Map::new()),
+            serializer,
+        )
+    }
 }
 
 
@@ -1361,7 +1392,7 @@ impl TryFrom<golem_api_grpc::proto::golem::component::FunctionResults> for Funct
                 Ok(FunctionResults::Unnamed(Type::try_from(typ)?))
             }
             Some(golem_api_grpc::proto::golem::component::function_results::Result::UnitResult(())) => {
-                Ok(FunctionResults::Unit("".to_string()))
+                Ok(FunctionResults::Unit(UnitRes))
             }
         }
     }
@@ -1657,7 +1688,7 @@ impl From<golem_wasm_ast::analysis::AnalysedFunctionResults> for FunctionResults
         match value {
             golem_wasm_ast::analysis::AnalysedFunctionResults::Named(named) => FunctionResults::Named(named.into_iter().map(|r| r.into()).collect()),
             golem_wasm_ast::analysis::AnalysedFunctionResults::Unnamed(typ) => FunctionResults::Unnamed(typ.into()),
-            golem_wasm_ast::analysis::AnalysedFunctionResults::Unit=> FunctionResults::Unit("".to_string()),
+            golem_wasm_ast::analysis::AnalysedFunctionResults::Unit=> FunctionResults::Unit(UnitRes),
         }
     }
 }

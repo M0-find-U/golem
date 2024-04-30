@@ -3141,12 +3141,12 @@ components:
         mapping:
           Named: '#/components/schemas/FunctionResults_[NamedFunctionResult]'
           Unnamed: '#/components/schemas/FunctionResults_Type'
-          Unit: '#/components/schemas/FunctionResults_string'
+          Unit: '#/components/schemas/FunctionResults_UnitRes'
       type: object
       oneOf:
       - $ref: '#/components/schemas/FunctionResults_[NamedFunctionResult]'
       - $ref: '#/components/schemas/FunctionResults_Type'
-      - $ref: '#/components/schemas/FunctionResults_string'
+      - $ref: '#/components/schemas/FunctionResults_UnitRes'
     FunctionResults_Type:
       allOf:
       - type: object
@@ -3157,6 +3157,16 @@ components:
         required:
         - type
       - $ref: '#/components/schemas/Type'
+    FunctionResults_UnitRes:
+      allOf:
+      - type: object
+        properties:
+          type:
+            example: Unit
+            type: string
+        required:
+        - type
+      - $ref: '#/components/schemas/UnitRes'
     FunctionResults_[NamedFunctionResult]:
       allOf:
       - type: object
@@ -3169,16 +3179,6 @@ components:
       - type: array
         items:
           $ref: '#/components/schemas/NamedFunctionResult'
-    FunctionResults_string:
-      allOf:
-      - type: object
-        properties:
-          type:
-            example: Unit
-            type: string
-        required:
-        - type
-      - type: string
     NameOptionTypePair:
       type: object
       properties:
@@ -3614,6 +3614,8 @@ components:
         required:
         - type
       - $ref: '#/components/schemas/TypeVariant'
+    UnitRes:
+      type: object
     UserComponentId:
       type: object
       properties:

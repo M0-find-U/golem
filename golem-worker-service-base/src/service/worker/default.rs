@@ -3,7 +3,7 @@ use std::pin::Pin;
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use golem_wasm_ast::analysis::AnalysedFunctionResult;
+use golem_wasm_ast::analysis::AnalysedFunctionResults;
 use golem_wasm_rpc::json::get_json_from_typed_value;
 use golem_wasm_rpc::protobuf::Val as ProtoVal;
 use golem_wasm_rpc::TypeAnnotatedValue;
@@ -437,11 +437,7 @@ where
             )
             .await?;
 
-        let function_results: Vec<AnalysedFunctionResult> = function_type
-            .results
-            .iter()
-            .map(|x| x.clone().into())
-            .collect();
+        let function_results: AnalysedFunctionResults = function_type.results.into();
 
         results_val
             .result

@@ -3088,9 +3088,7 @@ components:
           items:
             $ref: '#/components/schemas/FunctionParameter'
         results:
-          type: array
-          items:
-            $ref: '#/components/schemas/FunctionResult'
+          $ref: '#/components/schemas/FunctionResults'
       required:
       - name
       - parameters
@@ -3137,15 +3135,50 @@ components:
       required:
       - name
       - typ
-    FunctionResult:
+    FunctionResults:
+      discriminator:
+        propertyName: type
+        mapping:
+          Named: '#/components/schemas/FunctionResults_[NamedFunctionResult]'
+          Unnamed: '#/components/schemas/FunctionResults_Type'
+          Unit: '#/components/schemas/FunctionResults_string'
       type: object
-      properties:
-        name:
-          type: string
-        typ:
-          $ref: '#/components/schemas/Type'
-      required:
-      - typ
+      oneOf:
+      - $ref: '#/components/schemas/FunctionResults_[NamedFunctionResult]'
+      - $ref: '#/components/schemas/FunctionResults_Type'
+      - $ref: '#/components/schemas/FunctionResults_string'
+    FunctionResults_Type:
+      allOf:
+      - type: object
+        properties:
+          type:
+            example: Unnamed
+            type: string
+        required:
+        - type
+      - $ref: '#/components/schemas/Type'
+    FunctionResults_[NamedFunctionResult]:
+      allOf:
+      - type: object
+        properties:
+          type:
+            example: Named
+            type: string
+        required:
+        - type
+      - type: array
+        items:
+          $ref: '#/components/schemas/NamedFunctionResult'
+    FunctionResults_string:
+      allOf:
+      - type: object
+        properties:
+          type:
+            example: Unit
+            type: string
+        required:
+        - type
+      - type: string
     NameOptionTypePair:
       type: object
       properties:
@@ -3156,6 +3189,16 @@ components:
       required:
       - name
     NameTypePair:
+      type: object
+      properties:
+        name:
+          type: string
+        typ:
+          $ref: '#/components/schemas/Type'
+      required:
+      - name
+      - typ
+    NamedFunctionResult:
       type: object
       properties:
         name:

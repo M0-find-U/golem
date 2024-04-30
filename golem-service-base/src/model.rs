@@ -27,7 +27,6 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashSet;
 use std::{collections::HashMap, fmt::Display, fmt::Formatter};
 use golem_api_grpc::proto::golem::component::NamedFunctionResults;
-use crate::model::FunctionResults::Unit;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Object)]
 pub struct WorkerCreationRequest {

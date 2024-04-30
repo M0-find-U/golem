@@ -19,13 +19,14 @@ use golem_common::model::{
     parse_function_name, ComponentId, ComponentVersion, ShardId, Timestamp, WorkerFilter,
     WorkerStatus,
 };
-use golem_wasm_ast::analysis::{AnalysedResourceId, AnalysedResourceMode};
+use golem_wasm_ast::analysis::{AnalysedFunctionResults, AnalysedResourceId, AnalysedResourceMode};
 use http::Uri;
 use poem_openapi::{Enum, NewType, Object, Union};
 use rand::seq::IteratorRandom;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashSet;
 use std::{collections::HashMap, fmt::Display, fmt::Formatter};
+use golem_api_grpc::proto::golem::component::NamedFunctionResults;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Object)]
 pub struct WorkerCreationRequest {
@@ -1275,12 +1276,15 @@ pub struct ExportFunction {
     pub results: FunctionResults,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-enum FunctionResults {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Union)]
+#[oai(discriminator_name = "type", one_of = true)]
+pub enum FunctionResults {
     Named(Vec<NamedFunctionResult>),
     Unnamed(Type),
-    Unit
+    Unit(String)
 }
+
+
 
 impl TryFrom<golem_api_grpc::proto::golem::component::ExportFunction> for ExportFunction {
     type Error = String;
@@ -1295,11 +1299,13 @@ impl TryFrom<golem_api_grpc::proto::golem::component::ExportFunction> for Export
                 .into_iter()
                 .map(|parameter| parameter.try_into())
                 .collect::<Result<_, _>>()?,
-            results: value
-                .results
-                .into_iter()
-                .map(|result| result.try_into())
-                .collect::<Result<_, _>>()?,
+            results: {
+                let grpc_function_result = value
+                    .results
+                    .ok_or("Missing results")?;
+
+                FunctionResults::try_from(grpc_function_result)?
+            }
         })
     }
 }
@@ -1309,13 +1315,19 @@ impl From<FunctionResults> for golem_api_grpc::proto::golem::component::Function
         match value {
             FunctionResults::Named(results) => golem_api_grpc::proto::golem::component::FunctionResults {
                 result: Some(golem_api_grpc::proto::golem::component::function_results::Result::NamedResult(
-                    results.into_iter().map(|result| result.into()).collect()
+                    NamedFunctionResults {
+                        named_results: results.into_iter().map(|result| golem_api_grpc::proto::golem::component::NamedFunctionResult{
+                            name: result.name,
+                            tpe: Some(result.typ.into())
+
+                        }).collect()
+                    }
                 ))
             },
             FunctionResults::Unnamed(typ) => golem_api_grpc::proto::golem::component::FunctionResults {
                 result: Some(golem_api_grpc::proto::golem::component::function_results::Result::UnnamedResult(typ.into()))
             },
-            FunctionResults::Unit => golem_api_grpc::proto::golem::component::FunctionResults {
+            FunctionResults::Unit(_) => golem_api_grpc::proto::golem::component::FunctionResults {
                 result: Some(golem_api_grpc::proto::golem::component::function_results::Result::UnitResult(()))
             }
         }
@@ -1323,20 +1335,58 @@ impl From<FunctionResults> for golem_api_grpc::proto::golem::component::Function
 
 }
 
+impl TryFrom<golem_api_grpc::proto::golem::component::FunctionResults> for FunctionResults {
+    type Error = String;
+
+    fn try_from(
+        value: golem_api_grpc::proto::golem::component::FunctionResults,
+    ) -> Result<Self, Self::Error> {
+        match value.result {
+            None => Err("Missing result".to_string()),
+            Some(golem_api_grpc::proto::golem::component::function_results::Result::NamedResult(results)) => {
+                Ok(FunctionResults::Named(
+                    {
+                        let mut vec = vec![];
+
+                        for result in results.named_results {
+                            let named = NamedFunctionResult::try_from(result)?;
+                            vec.push(named)
+                        }
+
+                        vec
+                    }
+                ))
+            }
+            Some(golem_api_grpc::proto::golem::component::function_results::Result::UnnamedResult(typ)) => {
+                Ok(FunctionResults::Unnamed(Type::try_from(typ)?))
+            }
+            Some(golem_api_grpc::proto::golem::component::function_results::Result::UnitResult(())) => {
+                Ok(FunctionResults::Unit("".to_string()))
+            }
+        }
+    }
+
+}
+
+
 impl From<FunctionResults> for golem_wasm_ast::analysis::AnalysedFunctionResults {
     fn from(value: FunctionResults) -> Self {
         match value {
             FunctionResults::Named(results) => golem_wasm_ast::analysis::AnalysedFunctionResults::Named(
-                results.into_iter().map(|result| result.into()).collect()
+                results.into_iter().map(|named_function_result| golem_wasm_ast::analysis::NamedFunctionResult::from(named_function_result)).collect::<Vec<_>>()
             ),
             FunctionResults::Unnamed(typ) => golem_wasm_ast::analysis::AnalysedFunctionResults::Unnamed(typ.into()),
-            FunctionResults::Unit => golem_wasm_ast::analysis::AnalysedFunctionResults::Unit
+            FunctionResults::Unit(_) => golem_wasm_ast::analysis::AnalysedFunctionResults::Unit
         }
     }
 }
 
 impl From<ExportFunction> for golem_api_grpc::proto::golem::component::ExportFunction {
     fn from(value: ExportFunction) -> Self {
+
+        let res: golem_api_grpc::proto::golem::component::FunctionResults =
+            golem_api_grpc::proto::golem::component::FunctionResults::from(value.results);
+
         Self {
             name: value.name,
             parameters: value
@@ -1344,11 +1394,7 @@ impl From<ExportFunction> for golem_api_grpc::proto::golem::component::ExportFun
                 .into_iter()
                 .map(|parameter| parameter.into())
                 .collect(),
-            results: value
-                .results
-                .into_iter()
-                .map(|result| result.into())
-                .collect(),
+            results: Some(res)
         }
     }
 }
@@ -1555,7 +1601,7 @@ impl From<golem_wasm_ast::analysis::AnalysedFunction> for ExportFunction {
         Self {
             name: value.name,
             parameters: value.params.into_iter().map(|p| p.into()).collect(),
-            results: value.results.into_iter().map(|r| r.into()).collect(),
+            results: FunctionResults::from(value.results)
         }
     }
 }
@@ -1565,7 +1611,7 @@ impl From<ExportFunction> for golem_wasm_ast::analysis::AnalysedFunction {
         Self {
             name: value.name,
             params: value.parameters.into_iter().map(|p| p.into()).collect(),
-            results: value.results.into_iter().map(|r| r.into()).collect(),
+            results:  AnalysedFunctionResults::from(value.results)
         }
     }
 }
@@ -1611,7 +1657,7 @@ impl From<golem_wasm_ast::analysis::AnalysedFunctionResults> for FunctionResults
         match value {
             golem_wasm_ast::analysis::AnalysedFunctionResults::Named(named) => FunctionResults::Named(named.into_iter().map(|r| r.into()).collect()),
             golem_wasm_ast::analysis::AnalysedFunctionResults::Unnamed(typ) => FunctionResults::Unnamed(typ.into()),
-            golem_wasm_ast::analysis::AnalysedFunctionResults::Unit => FunctionResults::Unit,
+            golem_wasm_ast::analysis::AnalysedFunctionResults::Unit=> FunctionResults::Unit("".to_string()),
         }
     }
 }
@@ -1624,6 +1670,16 @@ impl From<NamedFunctionResult> for golem_wasm_ast::analysis::NamedFunctionResult
         }
     }
 }
+
+impl From<golem_wasm_ast::analysis::NamedFunctionResult> for NamedFunctionResult {
+    fn from(value: golem_wasm_ast::analysis::NamedFunctionResult) -> Self {
+        Self {
+            name: value.name,
+            typ: value.typ.into(),
+        }
+    }
+}
+
 
 impl From<golem_wasm_ast::analysis::AnalysedType> for Type {
     fn from(value: golem_wasm_ast::analysis::AnalysedType) -> Self {

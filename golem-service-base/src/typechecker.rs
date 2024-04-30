@@ -16,7 +16,7 @@ use golem_common::model::CallingConvention;
 use golem_wasm_rpc::protobuf::{val, Val};
 
 use crate::type_inference::infer_analysed_type;
-use golem_wasm_ast::analysis::{AnalysedFunctionParameter, AnalysedType};
+use golem_wasm_ast::analysis::{AnalysedFunctionParameter, AnalysedFunctionResults, AnalysedType};
 use golem_wasm_rpc::{json, protobuf, TypeAnnotatedValue};
 use serde_json::Value;
 
@@ -92,7 +92,7 @@ impl TypeCheckIn for Vec<Val> {
 pub trait TypeCheckOut {
     fn validate_function_result(
         self,
-        expected_types: Vec<AnalysedFunctionResult>,
+        expected_types: AnalysedFunctionResults,
         calling_convention: CallingConvention,
     ) -> Result<TypeAnnotatedValue, Vec<String>>;
 }
@@ -100,7 +100,7 @@ pub trait TypeCheckOut {
 impl TypeCheckOut for Vec<Val> {
     fn validate_function_result(
         self,
-        expected_types: Vec<AnalysedFunctionResult>,
+        expected_types: AnalysedFunctionResults,
         calling_convention: CallingConvention,
     ) -> Result<TypeAnnotatedValue, Vec<String>> {
         match calling_convention {
@@ -153,7 +153,7 @@ impl TypeCheckOut for Vec<Val> {
 mod tests {
     use crate::typechecker::TypeCheckOut;
     use golem_common::model::CallingConvention;
-    use golem_wasm_ast::analysis::{AnalysedFunctionResult, AnalysedType};
+    use golem_wasm_ast::analysis::{AnalysedFunctionResults, AnalysedType, NamedFunctionResult};
     use golem_wasm_rpc::json;
     use golem_wasm_rpc::protobuf::{val, Val};
     use serde_json::Value;
@@ -166,10 +166,12 @@ mod tests {
 
         let res = str_val
             .validate_function_result(
-                vec![AnalysedFunctionResult {
-                    name: Some("a".to_string()),
-                    typ: AnalysedType::Str,
-                }],
+                AnalysedFunctionResults::Named(vec![
+                    NamedFunctionResult {
+                        name: "a".to_string(),
+                        typ: AnalysedType::Str,
+                    },
+                ]),
                 CallingConvention::Stdio,
             )
             .map(|typed_value| json::get_json_from_typed_value(&typed_value));
@@ -182,10 +184,12 @@ mod tests {
 
         let res = num_val
             .validate_function_result(
-                vec![AnalysedFunctionResult {
-                    name: Some("a".to_string()),
-                    typ: AnalysedType::F64,
-                }],
+                AnalysedFunctionResults::Named(vec![
+                    NamedFunctionResult {
+                        name: "a".to_string(),
+                        typ: AnalysedType::F64,
+                    },
+                ]),
                 CallingConvention::Stdio,
             )
             .map(|typed_value| json::get_json_from_typed_value(&typed_value));
@@ -201,10 +205,12 @@ mod tests {
 
         let res = bool_val
             .validate_function_result(
-                vec![AnalysedFunctionResult {
-                    name: Some("a".to_string()),
-                    typ: AnalysedType::Bool,
-                }],
+                AnalysedFunctionResults::Named(vec![
+                    NamedFunctionResult {
+                        name: "a".to_string(),
+                        typ: AnalysedType::Bool,
+                    },
+                ]),
                 CallingConvention::Stdio,
             )
             .map(|typed_value| json::get_json_from_typed_value(&typed_value));

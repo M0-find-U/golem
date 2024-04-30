@@ -16,7 +16,7 @@ use golem_common::model::CallingConvention;
 use golem_wasm_rpc::protobuf::{val, Val};
 
 use crate::type_inference::infer_analysed_type;
-use golem_wasm_ast::analysis::{AnalysedFunctionParameter, AnalysedFunctionResult, AnalysedType};
+use golem_wasm_ast::analysis::{AnalysedFunctionParameter, AnalysedType};
 use golem_wasm_rpc::{json, protobuf, TypeAnnotatedValue};
 use serde_json::Value;
 

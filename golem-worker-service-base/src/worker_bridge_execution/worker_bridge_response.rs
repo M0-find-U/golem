@@ -97,15 +97,15 @@ impl RefinedWorkerResponse {
 
             match type_annotated_value {
                 Some(value) => {
-                    let json = get_json_from_typed_value(&value);
-                    let body: Body = Body::from_json(json).unwrap();
-                    poem::Response::builder().body(body)
+                    internal::convert_to_http_body(&value)
                 }
                 None => poem::Response::builder().status(StatusCode::OK).finish(),
             }
         }
     }
 }
+
+
 
 pub struct NoOpWorkerRequestExecutor {}
 
@@ -175,6 +175,7 @@ mod internal {
     use http::{HeaderMap, StatusCode};
     use poem::{Body, ResponseParts};
     use std::collections::HashMap;
+    use golem_wasm_rpc::TypeAnnotatedValue;
 
     pub(crate) struct IntermediateHttpResponse {
         body: EvaluationResult,
@@ -240,6 +241,23 @@ mod internal {
                         "Unable to resolve valid headers. Error: {}",
                         err
                     ))),
+            }
+        }
+    }
+
+    pub(crate) fn convert_to_http_body(
+        type_annotated_value: &TypeAnnotatedValue,
+    ) -> poem::Response {
+        match type_annotated_value {
+            TypeAnnotatedValue::Str(result) => {
+                let body: Body = Body::from_string(result.to_string());
+                poem::Response::builder().body(body)
+            }
+
+            others => {
+                let json = get_json_from_typed_value(others);
+                let body: Body = Body::from_json(json).unwrap();
+                poem::Response::builder().body(body)
             }
         }
     }

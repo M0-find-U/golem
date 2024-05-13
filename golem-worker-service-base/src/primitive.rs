@@ -21,6 +21,13 @@ impl Primitive {
             Primitive::Bool(value) => value.to_string(),
         }
     }
+
+    pub fn as_u8(&self) -> Option<u8> {
+        match self {
+            Primitive::Num(Number::PosInt(value)) => Some(*value as u8),
+            _ => None,
+        }
+    }
 }
 
 impl From<String> for Primitive {
@@ -91,6 +98,7 @@ fn get_number(type_annotated_value: &TypeAnnotatedValue) -> Option<Number> {
         TypeAnnotatedValue::U64(value) => Some(Number::PosInt(*value)),
         TypeAnnotatedValue::F32(value) => Some(Number::Float(*value as f64)),
         TypeAnnotatedValue::F64(value) => Some(Number::Float(*value)),
+        TypeAnnotatedValue::U8(value) => Some(Number::PosInt(*value as u64)),
         _ => None,
     }
 }

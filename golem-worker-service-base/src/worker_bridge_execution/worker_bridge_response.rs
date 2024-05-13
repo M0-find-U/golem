@@ -70,14 +70,14 @@ impl RefinedWorkerResponse {
     pub(crate) fn to_http_response(
         &self,
         response_mapping: &Option<ResponseMapping>,
-        input_request: &RequestDetails,
+        request_details: &RequestDetails,
         worker_request: &WorkerRequest,
     ) -> poem::Response {
         if let Some(mapping) = response_mapping {
             match internal::IntermediateHttpResponse::from(
                 self,
                 mapping,
-                input_request,
+                request_details,
                 worker_request,
             ) {
                 Ok(intermediate_response) => intermediate_response.to_http_response(),
@@ -95,9 +95,11 @@ impl RefinedWorkerResponse {
                 RefinedWorkerResponse::MultipleResults(results) => Some(results.clone()),
             };
 
+            let content_type = request_details.content_type.clone();
+
             match type_annotated_value {
                 Some(value) => {
-                    internal::convert_to_http_body(&value)
+                    internal::convert_to_http_body(&value, request_details)
                 }
                 None => poem::Response::builder().status(StatusCode::OK).finish(),
             }
@@ -175,7 +177,10 @@ mod internal {
     use http::{HeaderMap, StatusCode};
     use poem::{Body, ResponseParts};
     use std::collections::HashMap;
+    use std::ops::Deref;
+    use golem_wasm_ast::analysis::AnalysedType;
     use golem_wasm_rpc::TypeAnnotatedValue;
+    use poem::web::headers::ContentType;
 
     pub(crate) struct IntermediateHttpResponse {
         body: EvaluationResult,
@@ -247,11 +252,40 @@ mod internal {
 
     pub(crate) fn convert_to_http_body(
         type_annotated_value: &TypeAnnotatedValue,
+        request_details: &RequestDetails
     ) -> poem::Response {
+        let contentType = request_details.get_content_type();
+
         match type_annotated_value {
             TypeAnnotatedValue::Str(result) => {
                 let body: Body = Body::from_string(result.to_string());
                 poem::Response::builder().body(body)
+            }
+
+            TypeAnnotatedValue::List { typ, values } => {
+               match typ {
+                   AnalysedType::List(analysed_typ) => {
+                       let analysed_typ = analysed_typ.deref().clone();
+                       match analysed_typ {
+                           AnalysedType::U8 => {
+                               if contentType == ContentType::octet_stream() {
+                                   let casted =
+                                       values.into_iter().map(|v| v.get_primitive().unwrap().as_u8().unwrap()).collect::<Vec<u8>>();
+                                   let body: Body = Body::from_vec(casted);
+                                   poem::Response::builder().body(body)
+                               } else {
+                                   let json = get_json_from_typed_value(type_annotated_value);
+                                   let body: Body = Body::from_json(json).unwrap();
+                                   poem::Response::builder().body(body)
+
+                               }
+                           }
+                       }
+                       let json = get_json_from_typed_value(type_annotated_value);
+                       let body: Body = Body::from_json(json).unwrap();
+                       poem::Response::builder().body(body)
+                   }
+               }
             }
 
             others => {

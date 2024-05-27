@@ -8,14 +8,27 @@ use crate::worker_bridge_execution::RefinedWorkerResponse;
 use async_trait::async_trait;
 
 use golem_service_base::model::WorkerId;
-use golem_wasm_ast::analysis::AnalysedFunction;
+use golem_wasm_ast::analysis::{AnalysedFunction, AnalysedType};
 use golem_wasm_rpc::TypeAnnotatedValue;
 use std::fmt::Display;
 
+// Change variables to Map[Identifier, TypeAnnotatedValue]
+// initialize_cart(1, 2)
 #[derive(Clone)]
-pub struct EvaluationContext {
+pub struct EvaluationContext<T> {
     pub variables: Option<TypeAnnotatedValue>,
-    pub analysed_functions: Vec<AnalysedFunction>,
+    //Employee(1, 2), Student(3, 4)
+    // TODO; Investigate component model to see if nomimnal or structural typing is used
+    pub data_types: Vec<AnalysedType>,
+    pub function_types: Vec<AnalysedFunction>,
+    // invoke_context: T,
+    // invoker: fn(FQN, Vec<TypeAnnotatedValue>, EvaluationContext<T>) -> Future<Result<TypeAnnotatedValue, String>>,
+
+}
+
+// functions
+struct InvokableFunction{
+    type_signature: AnalysedFunction,
 }
 
 #[async_trait]

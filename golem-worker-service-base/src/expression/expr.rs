@@ -9,9 +9,19 @@ use serde_json::Value;
 use crate::parser::expr_parser::ExprParser;
 use crate::parser::{GolemParser, ParseError};
 
+// enum InferredType {
+//     Unknown,
+//     AllOf(Vec<InferredType>),
+//     OneOf(Vec<InferredType>),
+//     Known(AnalysedType)
+// }
+
+// let body = match result { ok(record) => record, err(error) => error } // body is One(vec<Record, Error>)
 #[derive(Debug, Clone, PartialEq, Encode, Decode)]
 pub enum Expr {
-    Let(String, Box<Expr>),
+    Let(String, Box<Expr>, InferredType),
+    // let x = record.person;
+    // let y = x + 1;
     SelectField(Box<Expr>, String),
     SelectIndex(Box<Expr>, usize),
     Sequence(Vec<Expr>),

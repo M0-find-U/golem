@@ -790,11 +790,15 @@ mod tests {
             )])),
         );
 
+        // TODO; Do type inference (but not necessarily make sure its fully type checked)
+        // leaving it to the evaluator
         let expression = r#"
           let condition1 = if (request.body.number < 11) then request.path.user-id else 1;
           let condition2 = if (request.body.number < 5) then request.path.user-id else 1;
-          let response = golem:it/api/get-cart-contents(condition1, condition2);
-          response
+          let condition3 = if (request.body > 10) then request.path.user-id else 1;
+          let response = golem:it/api/${request.user}(condition1, condition2);
+          let worker_user = response.user
+          worker_user
         "#;
 
         let api_specification: HttpApiDefinition =

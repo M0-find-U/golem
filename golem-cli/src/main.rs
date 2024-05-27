@@ -291,7 +291,7 @@ async fn async_main(cmd: GolemCommand) -> Result<(), Box<dyn std::error::Error>>
                 .map_err(|err| GolemError(format!("{err}")))
                 .map(|_| GolemResult::Str("Done".to_string())),
             golem_wasm_rpc_stubgen::Command::InitializeWorkspace(args) => {
-                golem_wasm_rpc_stubgen::initialize_workspace(args, "golem-cli", &["stubgen"])
+                golem_wasm_rpc_stubgen::initialize_workspace(args, "/Users/afsalthaj/github/golem/target/debug/golem-cli", &["stubgen"])
                     .map_err(|err| GolemError(format!("{err}")))
                     .map(|_| GolemResult::Str("Done".to_string()))
             }

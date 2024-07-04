@@ -9,7 +9,7 @@ pub trait Getter<T> {
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum GetError {
-    #[error("Key not found: {0}")]
+    #[error("   Key not found: {0}")]
     KeyNotFound(String),
     #[error("Index not found: {0}")]
     IndexNotFound(usize),

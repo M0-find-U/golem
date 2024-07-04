@@ -188,6 +188,7 @@ pub trait WorkerService<AuthCtx> {
     ) -> Result<Component, WorkerServiceError>;
 }
 
+#[derive(Debug, Clone)]
 pub struct TypedResult {
     pub result: TypeAnnotatedValue,
     pub function_result_types: Vec<FunctionResult>,

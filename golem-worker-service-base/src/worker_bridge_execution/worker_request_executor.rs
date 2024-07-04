@@ -17,6 +17,8 @@ pub trait WorkerRequestExecutor {
 
 // The result of a worker execution from worker-bridge,
 // which is a combination of function metadata and the type-annotated-value representing the actual result
+
+#[derive(Debug, Clone)]
 pub struct WorkerResponse {
     pub result: TypedResult,
 }

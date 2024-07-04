@@ -151,6 +151,8 @@ impl Evaluator for DefaultEvaluator {
 
                     input.merge(&response_context);
 
+                    dbg!(input);
+
                     Ok(ExprEvaluationResult::from(&result))
                 }
 
@@ -582,9 +584,13 @@ mod internal {
             EvaluationError::Message(format!("Failed to execute worker function: {}", err))
         })?;
 
+        dbg!(worker_response.clone());
+
         let refined_worker_response = worker_response.refined().map_err(|err| {
             EvaluationError::Message(format!("Failed to refine worker response: {}", err))
         })?;
+
+        dbg!(refined_worker_response.clone());
 
         Ok(refined_worker_response)
     }

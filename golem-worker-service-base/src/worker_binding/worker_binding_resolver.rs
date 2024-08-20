@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::sync::Arc;
 
-use crate::worker_binding::rib_input_value_resolver::RibInputValueResolver;
+use crate::worker_binding::rib_input_value_resolver::RibInputResolver;
 use crate::worker_binding::{RequestDetails, ResponseMappingCompiled, RibInputTypeMismatch};
 use crate::worker_bridge_execution::to_response::ToResponse;
 
@@ -91,7 +91,7 @@ impl ResolvedWorkerBindingFromRequest {
         EvaluationError: ToResponse<R>,
         RibInputTypeMismatch: ToResponse<R>,
     {
-        let request_rib_input = self
+        let mut request_rib_input = self
             .request_details
             .resolve_rib_input_value(&self.compiled_response_mapping.rib_input);
 
@@ -99,16 +99,19 @@ impl ResolvedWorkerBindingFromRequest {
             .worker_detail
             .resolve_rib_input_value(&self.compiled_response_mapping.rib_input);
 
-        match (request_rib_input, worker_rib_input) {
+
+        match (&mut request_rib_input, worker_rib_input) {
             (Ok(request_rib_input), Ok(worker_rib_input)) => {
-                let rib_input = request_rib_input.merge(worker_rib_input);
+
+                request_rib_input.merge(worker_rib_input);
+
                 let result = evaluator
                     .evaluate(
                         &self.worker_detail.worker_name,
                         &self.worker_detail.component_id.component_id,
                         &self.worker_detail.idempotency_key,
                         &self.compiled_response_mapping.compiled_response.clone(),
-                        &rib_input,
+                        &request_rib_input,
                     )
                     .await;
 

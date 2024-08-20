@@ -7,8 +7,7 @@ use golem_wasm_rpc::protobuf::type_annotated_value::TypeAnnotatedValue;
 
 use golem_common::model::{ComponentId, IdempotencyKey};
 
-use crate::worker_binding::RibInputValue;
-use rib::{ParsedFunctionName, RibByteCode, RibFunctionInvoke, RibInterpreterResult};
+use rib::{ParsedFunctionName, RibByteCode, RibFunctionInvoke, RibInput, RibInterpreterResult};
 
 use crate::worker_bridge_execution::{
     NoopWorkerRequestExecutor, WorkerRequest, WorkerRequestExecutor,
@@ -24,13 +23,13 @@ pub trait WorkerServiceRibInterpreter {
         component_id: &ComponentId,
         idempotency_key: &Option<IdempotencyKey>,
         rib_byte_code: &RibByteCode,
-        rib_input: &RibInputValue,
+        rib_input: RibInput,
     ) -> Result<RibInterpreterResult, EvaluationError>;
 
     async fn evaluate_pure(
         &self,
         expr: &RibByteCode,
-        rib_input: &RibInputValue,
+        rib_input: RibInput,
     ) -> Result<RibInterpreterResult, EvaluationError>;
 }
 
@@ -76,8 +75,8 @@ impl WorkerServiceRibInterpreter for DefaultEvaluator {
         worker_name: &str,
         component_id: &ComponentId,
         idempotency_key: &Option<IdempotencyKey>,
-        expr: &RibByteCode,
-        rib_input: &RibInputValue,
+        rib_byte_code: &RibByteCode,
+        rib_input: RibInput,
     ) -> Result<RibInterpreterResult, EvaluationError> {
         let executor = self.worker_request_executor.clone();
 
@@ -111,7 +110,7 @@ impl WorkerServiceRibInterpreter for DefaultEvaluator {
                 .boxed() // This ensures the future is boxed with the correct type
             },
         );
-        rib::interpret(expr, rib_input.value.clone(), worker_invoke_function)
+        rib::run_byte_code(rib_byte_code, rib_input, worker_invoke_function)
             .await
             .map_err(EvaluationError)
     }
@@ -119,7 +118,7 @@ impl WorkerServiceRibInterpreter for DefaultEvaluator {
     async fn evaluate_pure(
         &self,
         expr: &RibByteCode,
-        rib_input: &RibInputValue,
+        rib_input: RibInput,
     ) -> Result<RibInterpreterResult, EvaluationError> {
         let worker_invoke_function: RibFunctionInvoke = Arc::new(|_, _| {
             Box::pin(
@@ -130,7 +129,7 @@ impl WorkerServiceRibInterpreter for DefaultEvaluator {
             )
         });
 
-        rib::interpret(expr, rib_input.value.clone(), worker_invoke_function)
+        rib::run_byte_code(expr, rib_input, worker_invoke_function)
             .await
             .map_err(EvaluationError)
     }
@@ -155,13 +154,11 @@ mod tests {
     use golem_wasm_rpc::protobuf::{NameOptionTypePair, TypeVariant, TypedTuple, TypedVariant};
     use http::{HeaderMap, Uri};
     use poem_openapi::types::ToJSON;
-    use rib::{
-        Expr, FunctionTypeRegistry, RibFunctionInvoke, RibInputTypeInfo, RibInterpreterResult,
-    };
+    use rib::{Expr, FunctionTypeRegistry, RibFunctionInvoke, RibInput, RibInputTypeInfo, RibInterpreterResult};
     use serde_json::json;
 
     use crate::api_definition::http::AllPathPatterns;
-    use crate::worker_binding::{RequestDetails, RibInputValue, RibInputValueResolver};
+    use crate::worker_binding::{RequestDetails, RibInputResolver};
 
     use crate::worker_service_rib_interpreter::{
         DefaultEvaluator, EvaluationError, WorkerServiceRibInterpreter,
@@ -215,7 +212,7 @@ mod tests {
             let compiled_expr = rib::compile(&expr, &vec![]).unwrap();
 
             let eval_result = self
-                .evaluate_pure(&compiled_expr.byte_code, &rib_input_value)
+                .evaluate_pure(&compiled_expr.byte_code, rib_input_value)
                 .await?;
 
             Ok(eval_result.get_val().ok_or(EvaluationError(
@@ -239,7 +236,7 @@ mod tests {
             let mut type_info = HashMap::new();
             type_info.insert("worker".to_string(), worker_response_analysed_type);
 
-            let mut rib_input = HashMap::new();
+            let mut rib_input = RibInput::empty();
             rib_input.insert("worker".to_string(), worker_response.clone());
 
             if let Some((request_details, analysed_type)) = request_input {
@@ -252,8 +249,7 @@ mod tests {
                 rib_input.insert(
                     "request".to_string(),
                     request_rib_input_value
-                        .value
-                        .get("request")
+                        .lookup("request")
                         .unwrap()
                         .clone(),
                 );
@@ -272,7 +268,7 @@ mod tests {
             });
 
             let eval_result =
-                rib::interpret(&compiled.byte_code, rib_input, worker_invoke_function).await?;
+                rib::run_byte_code(&compiled.byte_code, rib_input, worker_invoke_function).await?;
 
             eval_result.get_val().ok_or(EvaluationError(
                 "The text is evaluated to unit and doesn't have a value".to_string(),
@@ -286,7 +282,7 @@ mod tests {
             let compiled =
                 rib::compile_pure(expr, &vec![], Some(AnalysedType::Str(TypeStr))).unwrap();
 
-            self.evaluate_pure(&compiled.byte_code, &RibInputValue::empty())
+            self.evaluate_pure(&compiled.byte_code, RibInput::empty())
                 .await
         }
     }

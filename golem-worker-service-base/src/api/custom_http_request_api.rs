@@ -101,7 +101,7 @@ impl CustomHttpRequestApi {
         {
             Ok(resolved_worker_request) => {
                 resolved_worker_request
-                    .interpret_response_mapping::<poem::Response>(&self.evaluator)
+                    .interpret_response_mapping(&self.evaluator)
                     .await
             }
 

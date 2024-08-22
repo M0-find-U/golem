@@ -218,7 +218,7 @@ mod internal {
     ) -> Result<(), String> {
         let env_key = EnvironmentKey::from(variable_id.clone());
         let value = interpreter.env.lookup(&env_key).ok_or(format!(
-            "Variable `{}` not found during evaluation of expression",
+            "Variable `{:?}` not found during evaluation of expression",
             variable_id
         ))?;
 

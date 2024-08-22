@@ -6,14 +6,13 @@ pub fn name_binding(expr: &mut Expr) {
     let mut queue = VecDeque::new();
     queue.push_front(expr);
 
-    // Start from the end
     while let Some(expr) = queue.pop_front() {
         match expr {
             Expr::Let(variable_id, expr, _) => {
                 let field_name = variable_id.name();
                 identifier_id_state.update_variable_id(&field_name); // Increment the variable_id
                 *variable_id = identifier_id_state.lookup(&field_name).unwrap();
-                expr.visit_children_mut_top_down(&mut queue);
+                queue.push_front(&mut **expr);
             }
 
             Expr::Identifier(variable_id, _) => {

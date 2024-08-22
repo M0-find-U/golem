@@ -171,6 +171,9 @@ pub fn push_types_down(expr: &mut Expr) {
             Expr::Tuple(exprs, inferred_type) => {
                 // The inferred_type should be ideally tuple type, i.e, either Unknown type. or all of multiple tuple types, or one of all tuple types,
                 // and otherwise we give up inferring the internal type at this phase
+
+                dbg!("here..{:?} {:?}", exprs.clone(), inferred_type.clone());
+
                 match inferred_type {
                     InferredType::Tuple(types) => {
                         for (expr, typ) in exprs.iter_mut().zip(types) {
@@ -325,17 +328,18 @@ mod internal {
     //   some(some(some(x))) => x
     pub(crate) fn update_arm_pattern_type(
         arm_pattern: &mut ArmPattern,
-        inferred_type: &InferredType,
+        predicate_type: &InferredType,
     ) {
+        dbg!(arm_pattern.clone(), predicate_type.clone());
         match arm_pattern {
             ArmPattern::Literal(expr) => {
-                expr.add_infer_type_mut(inferred_type.clone());
+                expr.add_infer_type_mut(predicate_type.clone());
                 expr.push_types_down()
             }
             ArmPattern::As(_, pattern) => {
-                update_arm_pattern_type(pattern, inferred_type);
+                update_arm_pattern_type(pattern, predicate_type);
             }
-            ArmPattern::Constructor(constructor_name, patterns) => match inferred_type {
+            ArmPattern::Constructor(constructor_name, patterns) => match predicate_type {
                 InferredType::Option(inner_type) => {
                     if constructor_name == "some" || constructor_name == "none" {
                         for pattern in &mut *patterns {

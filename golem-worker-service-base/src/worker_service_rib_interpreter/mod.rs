@@ -145,10 +145,7 @@ mod tests {
     use std::sync::Arc;
 
     use golem_service_base::type_inference::infer_analysed_type;
-    use golem_wasm_ast::analysis::{
-        AnalysedExport, AnalysedType, NameTypePair, TypeList, TypeOption, TypeRecord, TypeStr,
-        TypeU32, TypeU64,
-    };
+    use golem_wasm_ast::analysis::{AnalysedExport, AnalysedType, NameTypePair, TypeList, TypeOption, TypeRecord, TypeStr, TypeTuple, TypeU32, TypeU64};
 
     use golem_wasm_rpc::json::TypeAnnotatedValueJsonExtensions;
     use golem_wasm_rpc::protobuf::type_annotated_value::TypeAnnotatedValue;
@@ -1262,6 +1259,57 @@ mod tests {
         let expected = TypeAnnotatedValue::Str("personal-id".to_string());
 
         assert_eq!(&value1, &expected);
+    }
+
+
+    #[tokio::test]
+    async fn test_evaluation_with_tuple() {
+        let noop_executor = DefaultEvaluator::noop();
+
+        // Output from worker
+        let worker_response = create_tuple(vec![create_record(
+            vec![("id".to_string(), TypeAnnotatedValue::U64(1))],
+        ).unwrap(), create_list(vec![TypeAnnotatedValue::Str("elem1".to_string()), TypeAnnotatedValue::Str("elem2".to_string())]).unwrap()]).unwrap();
+
+        // Output from worker
+
+        let record_type = AnalysedType::Record(TypeRecord {
+            fields: vec![NameTypePair {
+                name: "id".to_string(),
+                typ: AnalysedType::Str(TypeStr),
+            }],
+        });
+
+        // Output from worker
+        let return_type = AnalysedType::try_from(&worker_response).unwrap();
+
+        let component_metadata =
+            get_analysed_exports("foo", vec![AnalysedType::U64(TypeU64)], return_type);
+
+        let expr1 = rib::from_string(
+            r#"${
+              let result = foo(1);
+              let x = result;
+              match x {
+                 (id, list) => { id : id, first_elem : list[0], second_elem : list[1] }
+              }
+             }"#,
+        ).unwrap();
+
+        let value1 = noop_executor
+            .evaluate_with_worker_response(
+                &expr1,
+                Some(worker_response.clone()),
+                component_metadata.clone(),
+                None,
+            )
+            .await
+            .unwrap();
+
+        let expected = value1.to_json_value();
+        dbg!(expected.clone());
+
+        assert_eq!(&serde_json::Value::Null, &expected);
     }
 
     #[tokio::test]

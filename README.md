@@ -13,8 +13,6 @@ https://learn.golem.cloud/docs/quickstart#setting-up-golem
 
 Once you have Golem running locally, you can use `golem-cli` to interact with Golem services.
 
-```bash
-
 cargo install golem-cli
 
 # component is your compiled code written in Rust, C, etc

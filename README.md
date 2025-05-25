@@ -12,7 +12,7 @@ It is possible to start using Golem locally by using our published Docker contai
 https://learn.golem.cloud/docs/quickstart#setting-up-golem
 
 Once you have Golem running locally, you can use `golem-cli` to interact with Golem services.
-
+brew cleanup -n
 ```bash
 
 cargo install golem-cli
